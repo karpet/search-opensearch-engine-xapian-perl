@@ -58,7 +58,7 @@ Search::OpenSearch::Engine::Xapian - Xapian engine for OpenSearch results
     f           => 1,                   # include facets
     r           => 1,                   # include results
     t           => 'XML',               # or JSON
-    L           => 'http://yourdomain.foo/opensearch/',
+    u           => 'http://yourdomain.foo/opensearch/',
     b           => 'AND',               # or OR
  );
  print $response;
@@ -66,6 +66,34 @@ Search::OpenSearch::Engine::Xapian - Xapian engine for OpenSearch results
 =head1 DESCRIPTION
 
 =head1 METHODS
+
+=head2 init_searcher
+
+Returns a SWISH::Prog::Lucy::Searcher object.
+
+=head2 init_indexer
+
+Returns a SWISH::Prog::Lucy::Indexer object (used by the REST API).
+
+=head2 build_facets( I<query>, I<results> )
+
+Returns hash ref of facets from I<results>. See Search::OpenSearch::Engine.
+
+=head2 process_result( I<args> )
+
+Overrides base method to preserve multi-value fields as arrays.
+
+=head2 has_rest_api
+
+Returns true.
+
+=head2 PUT( I<doc> )
+
+=head2 POST( I<doc> )
+
+=head2 DELETE( I<uri> )
+
+=head2 GET( I<uri> )
 
 =cut
 
@@ -93,7 +121,11 @@ sub init_indexer {
     # but a subclass could do more subtle logic here.
 
     my $indexer = SWISH::Prog::Xapian::Indexer->new(
-        invindex => $self->index->[0],
+
+        # first the index value to stringify in case it is an InvIndex
+        # object. Otherwise, the indexer and searcher can end up sharing
+        # the same xdb handle, which we definitely do not want.
+        invindex => $self->index->[0] . "",
         debug    => $self->debug,
         %{ $self->indexer_config },
     );
@@ -200,10 +232,10 @@ sub DELETE {
         };
     }
     my $indexer = $self->init_indexer();
-    $indexer->get_lucy->delete_by_term(
-        field => 'swishdocpath',
-        term  => $uri,
-    );
+    $indexer->start;
+    my $xdb = $indexer->invindex->xdb;
+    my $term = join( '', SWISH_PREFIX_URL(), $uri );
+    $xdb->delete_document_by_term($term);
     $indexer->finish();
     return {
         code => 204,    # no content in response
@@ -215,23 +247,33 @@ sub GET {
     my $uri = shift or croak "uri required";
 
     # TODO get by term
-    my $x_uri    = join( '', SWISH_PREFIX_URL(), $uri );
-    my $searcher = $self->searcher();
-    my $results  = $searcher->search( $x_uri, { max => 1 } );
-    my $hit      = $results->next;
-    if ( !$hit ) {
+    my $term = join( '', SWISH_PREFIX_URL(), $uri );
+    my $xdb = $self->searcher()->invindex->[0]->xdb;
+
+    #warn "got xdb $xdb";
+    # always reopen in case handle is stale from a POST or PUT
+    $xdb->reopen();
+
+    #warn "xdb->reopen $xdb";
+    if ( !$xdb->term_exists($term) ) {
         return { code => 404, };
     }
 
     # get all fields
     my %doc;
-    my $fields = $self->fields;
+    my $fields      = $self->fields;
+    my $doc_id      = $xdb->postlist_begin($term);
+    my $x_doc       = $xdb->get_document($doc_id);
+    my $prop_id_map = $self->searcher->prop_id_map;
     for my $field (@$fields) {
-        my $str = $hit->get_property($field);
+        if ( !exists $prop_id_map->{$field} ) {
+            croak "No such field: $field";
+        }
+        my $str = $x_doc->get_value( $prop_id_map->{$field} );
         $doc{$field} = [ split( m/\003/, defined $str ? $str : "" ) ];
     }
-    $doc{title}   = $hit->title;
-    $doc{summary} = $hit->get_property('swishdescription');
+    $doc{title}   = $x_doc->get_value( $prop_id_map->{swishtitle} );
+    $doc{summary} = $x_doc->get_value( $prop_id_map->{'swishdescription'} );
 
     my $ret = {
         code => 200,
