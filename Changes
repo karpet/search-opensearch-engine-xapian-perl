@@ -3,3 +3,5 @@ Revision history for Search-OpenSearch-Engine-Xapian
 0.01    23 Oct 2011
         First version, released on an unsuspecting world.
 
+0.02    19 Feb 2012
+    * add build_facets() support

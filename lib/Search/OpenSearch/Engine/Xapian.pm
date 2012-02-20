@@ -12,7 +12,7 @@ use Carp;
 use Data::Dump qw( dump );
 use Scalar::Util qw( blessed );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 NAME
 
@@ -106,9 +106,7 @@ sub init_searcher {
         %{ $self->searcher_config },
     );
     if ( !$self->fields ) {
-
-        #$self->fields( $searcher->get_propnames );
-        croak "TODO get default fields";
+        $self->fields( [ keys %{ $searcher->prop_id_map } ] );
     }
     return $searcher;
 }
@@ -130,6 +128,45 @@ sub init_indexer {
         %{ $self->indexer_config },
     );
     return $indexer;
+}
+
+sub build_facets {
+    my $self    = shift;
+    my $query   = shift or croak "query required";
+    my $results = shift or croak "results required";
+    if ( $self->debug and $self->logger ) {
+        $self->logger->log(
+            "build_facets check for self->facets=" . $self->facets );
+    }
+    my $facetobj = $self->facets or return;
+
+    my @facet_names = @{ $facetobj->names };
+    my $sample_size = $facetobj->sample_size || 0;
+    if ( $self->debug and $self->logger ) {
+        $self->logger->log( "building facets for "
+                . dump( \@facet_names )
+                . " with sample_size=$sample_size" );
+    }
+    my $searcher = $self->searcher;
+
+    # run the search, aborting after $sample_size for speed
+    my $facet_results = $searcher->search(
+        $query,
+        {   get_facets   => \@facet_names,
+            facet_sample => $sample_size
+        }
+    );
+
+    # turn the struct inside out a bit, esp for XML
+    my %facet_struct;
+    my $facets = $facet_results->facets;
+    for my $f ( keys %$facets ) {
+        for my $n ( keys %{ $facets->{$f} } ) {
+            push @{ $facet_struct{$f} },
+                { term => $n, count => $facets->{$f}->{$n} };
+        }
+    }
+    return \%facet_struct;
 }
 
 sub has_rest_api {1}
