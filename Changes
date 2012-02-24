@@ -5,3 +5,6 @@ Revision history for Search-OpenSearch-Engine-Xapian
 
 0.02    19 Feb 2012
     * add build_facets() support
+
+0.03    23 Feb 2012
+    * fix POD references to Lucy

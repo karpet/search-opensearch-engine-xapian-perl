@@ -12,7 +12,7 @@ use Carp;
 use Data::Dump qw( dump );
 use Scalar::Util qw( blessed );
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 =head1 NAME
 
@@ -69,11 +69,11 @@ Search::OpenSearch::Engine::Xapian - Xapian engine for OpenSearch results
 
 =head2 init_searcher
 
-Returns a SWISH::Prog::Lucy::Searcher object.
+Returns a SWISH::Prog::Xapian::Searcher object.
 
 =head2 init_indexer
 
-Returns a SWISH::Prog::Lucy::Indexer object (used by the REST API).
+Returns a SWISH::Prog::Xapian::Indexer object (used by the REST API).
 
 =head2 build_facets( I<query>, I<results> )
 
