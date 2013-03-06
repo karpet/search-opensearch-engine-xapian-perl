@@ -12,7 +12,7 @@ use Carp;
 use Data::Dump qw( dump );
 use Scalar::Util qw( blessed );
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 =head1 NAME
 
@@ -74,6 +74,14 @@ Returns a SWISH::Prog::Xapian::Searcher object.
 =head2 init_indexer
 
 Returns a SWISH::Prog::Xapian::Indexer object (used by the REST API).
+
+=head2 init_suggester
+
+Returns undefined. Available to support Engine API.
+
+=head2 get_allowed_http_methods
+
+Returns array of GET, POST, PUT, DELETE. Available to support Engine API.
 
 =head2 build_facets( I<query>, I<results> )
 
@@ -169,7 +177,9 @@ sub build_facets {
     return \%facet_struct;
 }
 
-sub has_rest_api {1}
+sub has_rest_api             {1}
+sub get_allowed_http_methods { return qw( GET PUT POST DELETE ) }
+sub init_suggester           { }
 
 sub _massage_rest_req_into_doc {
     my ( $self, $req ) = @_;
