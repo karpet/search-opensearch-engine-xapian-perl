@@ -12,7 +12,7 @@ use Carp;
 use Data::Dump qw( dump );
 use Scalar::Util qw( blessed );
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 =head1 NAME
 
@@ -321,6 +321,7 @@ sub GET {
     }
     $doc{title}   = $x_doc->get_value( $prop_id_map->{swishtitle} );
     $doc{summary} = $x_doc->get_value( $prop_id_map->{'swishdescription'} );
+    $doc{mtime}   = $x_doc->get_value( $prop_id_map->{'swishlastmodified'} );
 
     my $ret = {
         code => 200,

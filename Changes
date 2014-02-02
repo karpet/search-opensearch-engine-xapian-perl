@@ -1,5 +1,8 @@
 Revision history for Search-OpenSearch-Engine-Xapian
 
+0.05 02 Feb 2014
+ - add mtime to GET REST response
+
 0.04 6 March 2013
  - add init_suggester() and get_allowed_http_methods() to support latest
    version of Dezi
